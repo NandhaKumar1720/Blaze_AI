@@ -7,12 +7,12 @@ const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
 const PORT = process.env.PORT || 3000;
-const numCPUs = os.cpus().length; // Get total CPU cores
+const numCPUs = os.cpus().length; // Get CPU core count
 
 if (cluster.isMaster) {
     console.log(`[Master] Forking ${numCPUs} workers...`);
     for (let i = 0; i < numCPUs; i++) {
-        cluster.fork(); // Create worker process for each CPU core
+        cluster.fork();
     }
 
     cluster.on("exit", (worker) => {
@@ -23,19 +23,22 @@ if (cluster.isMaster) {
 } else {
     const app = express();
 
-    // Middleware
-    app.use(compression()); // Enable compression
-    app.use(express.json({ limit: "50kb" })); // Reduce parsing time
-    app.use(express.static(__dirname)); // Serve frontend
+    // ✅ Fix: Trust reverse proxies (Heroku, Vercel, Nginx, etc.)
+    app.set("trust proxy", 1);
 
-    // Rate limiting to prevent excessive API calls
+    // ✅ Middleware for Performance
+    app.use(compression()); // Gzip compression for smaller responses
+    app.use(express.json({ limit: "50kb" })); // Limit body size to prevent slow parsing
+    app.use(express.static(__dirname)); // Serve frontend files
+
+    // ✅ Rate Limiting (Prevents Abuse)
     app.use(rateLimit({
         windowMs: 60 * 1000, // 1 min
-        max: 20,
+        max: 20, // Max 20 requests per minute
         message: { error: "Too many requests. Slow down!" },
     }));
 
-    // Reusable Axios instance with Keep-Alive
+    // ✅ Axios with Keep-Alive for Faster API Calls
     const axiosInstance = axios.create({
         baseURL: "https://chatgpt-42.p.rapidapi.com",
         headers: {
@@ -44,10 +47,10 @@ if (cluster.isMaster) {
             "x-rapidapi-key": process.env.RAPIDAPI_KEY,
             Connection: "keep-alive",
         },
-        timeout: 5000, // Set a timeout for fast failures
+        timeout: 5000, // Fail fast if request takes too long
     });
 
-    // AI Chat API
+    // ✅ API Route: AI Chatbot Request
     app.post("/generate", async (req, res) => {
         const { prompt } = req.body;
         if (!prompt) return res.status(400).json({ error: "Prompt is required" });
@@ -69,7 +72,13 @@ if (cluster.isMaster) {
         }
     });
 
-    // Start Server
+    // ✅ Graceful Shutdown Handling
+    process.on("SIGINT", () => {
+        console.log(`[Worker ${process.pid}] Shutting down...`);
+        process.exit();
+    });
+
+    // ✅ Start Server
     app.listen(PORT, () => {
         console.log(`[Worker ${process.pid}] Server running at http://localhost:${PORT}`);
     });
