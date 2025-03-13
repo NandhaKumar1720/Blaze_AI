@@ -1,7 +1,7 @@
 {
-  "name": "express-chatbot-server",
+  "name": "gemini-pro-api-server",
   "version": "1.0.0",
-  "description": "An Express.js server for chatbot integration with RapidAPI.",
+  "description": "Express server to interact with Gemini Pro AI API via RapidAPI",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -17,9 +17,7 @@
     "nodemon": "^3.0.1"
   },
   "engines": {
-    "node": ">=14"
+    "node": ">=14.0.0"
   },
-  "keywords": ["chatbot", "express", "api", "rapidapi"],
-  "author": "Your Name",
   "license": "MIT"
 }
